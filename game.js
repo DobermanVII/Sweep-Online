@@ -347,13 +347,29 @@ function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
 }
 
-function leaveRoom() {
+function clearRoomSession() {
   clearInterval(pollTimer);
   pollTimer = null;
   session = null;
   state = null;
   sessionStorage.removeItem("sweep-session");
   showScreen("lobby");
+}
+
+async function leaveRoom() {
+  const leavingSession = session;
+  const wasWaiting = state?.phase === "waiting";
+  clearRoomSession();
+  if (!leavingSession || !wasWaiting) return;
+  try {
+    await api(`/api/rooms/${leavingSession.code}/leave`, {
+      method: "POST",
+      body: JSON.stringify({ token: leavingSession.token }),
+      keepalive: true
+    });
+  } catch {
+    // The local session is already cleared; the server will reject stale tokens.
+  }
 }
 
 document.querySelectorAll("[data-open-panel]").forEach((button) => button.addEventListener("click", () => {
@@ -452,3 +468,9 @@ try {
 } catch {
   sessionStorage.removeItem("sweep-session");
 }
+
+window.addEventListener("pagehide", () => {
+  if (!session || state?.phase !== "waiting") return;
+  const payload = new Blob([JSON.stringify({ token: session.token })], { type: "application/json" });
+  navigator.sendBeacon(`/api/rooms/${session.code}/leave`, payload);
+});

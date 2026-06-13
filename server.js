@@ -80,6 +80,15 @@ function teamForBot(room) {
   return counts[0] <= counts[1] ? 0 : 1;
 }
 
+function removeWaitingPlayer(room, seat) {
+  if (room.phase !== "waiting") throw new Error("Cannot leave after the match starts");
+  if (room.players[seat].token === room.hostToken) {
+    rooms.delete(room.code);
+    return;
+  }
+  room.players.splice(seat, 1);
+}
+
 function startMatch(room) {
   room.round = 1;
   room.scores = Array(sideCount(room)).fill(0);
@@ -258,14 +267,21 @@ async function api(req, res, url) {
       const seat = room.players.length - 1;
       return json(res, 200, { code: room.code, token: playerToken, seat });
     }
-    const match = url.pathname.match(/^\/api\/rooms\/([^/]+)\/(state|play|next-round|surrender|add-bot|start)$/);
+    const match = url.pathname.match(/^\/api\/rooms\/([^/]+)\/(state|play|next-round|surrender|add-bot|start|leave)$/);
     if (match) {
       const room = rooms.get(match[1].toUpperCase());
       if (!room) throw new Error("Room not found");
       const data = req.method === "POST" ? await body(req) : {};
       const playerToken = url.searchParams.get("token") || data.token;
       const seat = auth(room, playerToken);
-      if (match[2] === "state" && req.method === "GET") return json(res, 200, publicState(room, seat));
+      if (match[2] === "state" && req.method === "GET") {
+        room.players[seat].connectedAt = Date.now();
+        return json(res, 200, publicState(room, seat));
+      }
+      if (match[2] === "leave" && req.method === "POST") {
+        removeWaitingPlayer(room, seat);
+        return json(res, 200, { left: true });
+      }
       if (match[2] === "play" && req.method === "POST") {
         play(room, seat, data.cardId);
         return json(res, 200, publicState(room, seat));
