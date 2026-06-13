@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#102d27">
+  <title>Sweep Table</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main id="app">
+    <section class="lobby screen" id="lobby">
+      <div class="brand">
+        <div class="brand-mark"><span>S</span></div>
+        <p class="eyebrow">THE CLASSIC CAPTURE GAME</p>
+        <h1>SWEEP</h1>
+        <p class="tagline">Clear the table. Claim the round.</p>
+      </div>
+
+      <div class="lobby-actions">
+        <button class="primary big-action" data-open-panel="create">
+          <span class="action-icon">+</span>
+          <span><strong>Create room</strong><small>Host a private table</small></span>
+          <span class="arrow">›</span>
+        </button>
+        <button class="secondary big-action" data-open-panel="join">
+          <span class="action-icon">#</span>
+          <span><strong>Join room</strong><small>Enter an invite code</small></span>
+          <span class="arrow">›</span>
+        </button>
+        <button class="text-button" id="quickPlay">Quick play vs. dealer</button>
+      </div>
+
+      <p class="lobby-footer">First to 21 points wins</p>
+    </section>
+
+    <section class="room-panel screen hidden" id="roomPanel">
+      <button class="back-button" id="backToLobby" aria-label="Back">‹</button>
+      <div class="panel-card">
+        <p class="eyebrow" id="panelEyebrow">NEW TABLE</p>
+        <h2 id="panelTitle">Create room</h2>
+        <p class="panel-copy" id="panelCopy">Choose a mode to create its waiting room.</p>
+
+        <form id="roomForm">
+          <label>Your name<input id="playerName" autocomplete="nickname" maxlength="16" value="Player"></label>
+          <label id="roomCodeField" class="hidden">Room code<input id="roomCode" maxlength="6" placeholder="SWEEP1"></label>
+          <label id="scoreField">Target score
+            <select id="targetScore">
+              <option>11</option>
+              <option selected>21</option>
+              <option>31</option>
+              <option>51</option>
+            </select>
+          </label>
+          <fieldset id="modeField">
+            <legend>Game mode</legend>
+            <div class="mode-picker">
+              <button type="button" class="mode-option selected" data-mode="1v1"><b>1v1</b><small>2 players</small></button>
+              <button type="button" class="mode-option" data-mode="1v1v1"><b>1v1v1</b><small>3 players</small></button>
+              <button type="button" class="mode-option" data-mode="2v2"><b>2v2</b><small>4 players</small></button>
+            </div>
+            <input type="hidden" id="selectedMode" value="1v1">
+          </fieldset>
+          <button class="primary submit-button create-submit" type="submit" id="roomSubmit">Create 1v1 table</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="game screen hidden" id="game">
+      <header class="game-header">
+        <span class="header-spacer"></span>
+        <div class="room-id"><span class="live-dot"></span><span id="roomLabel">ROOM SWEEP1</span></div>
+        <div class="header-actions">
+          <button class="surrender-button hidden" id="surrenderButton">Surrender</button>
+          <button class="icon-button" id="rulesButton" aria-label="Rules">?</button>
+        </div>
+      </header>
+
+      <aside class="scoreboard">
+        <div class="score-title"><span>ROUND <b id="roundNumber">1</b></span><span>TO <b id="scoreTarget">21</b></span></div>
+        <div id="scoreRows"></div>
+        <div class="score-meta"><span><b id="deckCount">40</b> deck</span><span><b id="capturedCount">0</b> captured</span></div>
+      </aside>
+
+      <div class="table">
+        <section class="opponent-area">
+          <div class="opponents-grid" id="opponentsGrid"></div>
+        </section>
+
+        <section class="play-area">
+          <div class="turn-indicator" id="turnIndicator"><span></span><strong>Your turn</strong><small>Play one card</small></div>
+          <div class="table-cards" id="tableCards"></div>
+          <p class="empty-table hidden" id="emptyTable">Table cleared</p>
+        </section>
+
+        <section class="player-area">
+          <div class="hand player-hand" id="playerHand"></div>
+          <div class="player-strip">
+            <div class="player-label"><span class="avatar active-avatar">Y</span><span><strong id="playerLabel">You</strong><small id="playerStatus">Your turn</small></span></div>
+            <div class="capture-badge" id="playerCaptureBadge"><span class="mini-card-stack"></span><b id="playerCapturedCount">0</b><small>CAPTURED</small></div>
+            <div class="sweep-count"><span>✦</span><b id="sweepCount">0</b><small>SWEEPS</small></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="fx-layer" id="fxLayer" aria-hidden="true"></div>
+      <div class="toast" id="toast" aria-live="polite"></div>
+      <div class="waiting-overlay hidden" id="waitingOverlay">
+        <div class="waiting-card">
+          <p class="eyebrow">ONLINE ROOM</p>
+          <h2>Waiting for players</h2>
+          <p>Share room code</p>
+          <strong id="waitingCode">SWEEP1</strong>
+          <div class="waiting-seats" id="waitingSeats"></div>
+          <button class="primary add-bot-button hidden" id="addBotButton">Add bot</button>
+          <button class="secondary-button leave-waiting-button" id="leaveWaitingButton">Leave room</button>
+          <small id="waitingStatus">1 of 2 players joined</small>
+        </div>
+      </div>
+    </section>
+
+    <dialog id="rulesDialog">
+      <button class="dialog-close" id="closeRules">×</button>
+      <p class="eyebrow">HOW TO PLAY</p>
+      <h2>Sweep rules</h2>
+      <div class="rule-list">
+        <p><b>Online modes</b><span>Play 1v1, three-player free-for-all, or 2v2 with shared team scores.</span></p>
+        <p><b>Fair play</b><span>The server validates turns, captures, Sweeps, scoring, and round endings.</span></p>
+        <p><b>Deck</b><span>Play with all 52 standard cards plus both jokers.</span></p>
+        <p><b>Jokers</b><span>A joker is wild and captures the entire table pile.</span></p>
+        <p><b>Match the top card</b><span>Play a card matching the exposed top card to capture the entire table pile.</span></p>
+        <p><b>Sweep</b><span>Capturing the entire pile when only one card is on the table scores +2 points.</span></p>
+        <p><b>Round bonuses</b><span>Most cards +3, 10♦ +2, and 2♣ +1.</span></p>
+        <p><b>Win</b><span>First player to reach the target score wins.</span></p>
+      </div>
+    </dialog>
+
+    <dialog id="roundDialog">
+      <p class="eyebrow">ROUND COMPLETE</p>
+      <h2 id="roundResultTitle">Well played</h2>
+      <div class="round-results" id="roundResults"></div>
+      <button class="primary submit-button" id="nextRound">Next round</button>
+    </dialog>
+
+    <dialog class="confirm-dialog" id="surrenderDialog">
+      <h2>Are you sure you want to surrender?</h2>
+      <div class="confirm-actions">
+        <button class="danger-button" id="confirmSurrender">Yes</button>
+        <button class="secondary-button" id="cancelSurrender">No</button>
+      </div>
+    </dialog>
+  </main>
+  <script src="game.js?v=online-modes-3"></script>
+</body>
+</html>
