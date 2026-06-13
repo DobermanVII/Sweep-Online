@@ -230,9 +230,15 @@ function renderWaitingTeams() {
 }
 
 function renderOpponents() {
-  const opponents = state.players.filter((player) => player.seat !== state.seat);
+  let opponents = state.players.filter((player) => player.seat !== state.seat);
+  if (state.mode === "2v2") {
+    const myTeam = state.players[state.seat].team;
+    const teammate = opponents.find((player) => player.team === myTeam);
+    const rivals = opponents.filter((player) => player.team !== myTeam).sort((a, b) => a.seat - b.seat);
+    opponents = [rivals[0], teammate, rivals[1]].filter(Boolean);
+  }
   $("opponentsGrid").innerHTML = opponents.map((player, index) => `
-    <article class="opponent-seat opponent-position-${index + 1} ${state.turn === player.seat && state.phase === "playing" ? "active-seat" : ""}">
+    <article class="opponent-seat opponent-position-${index + 1} ${state.mode === "2v2" && player.team === state.players[state.seat].team ? "teammate-seat" : "rival-seat"} ${state.turn === player.seat && state.phase === "playing" ? "active-seat" : ""}">
       <div class="player-label"><span class="avatar">${escapeHtml(player.name[0] || "P")}</span><span><strong>${escapeHtml(player.name)}</strong><small>${state.mode === "2v2" ? `Team ${player.team + 1}` : `Score ${player.score}`}</small></span></div>
       <div class="capture-badge" data-side="${player.team}"><span class="mini-card-stack"></span><b>${player.capturedCount}</b><small>CAPTURED</small></div>
       <div class="hand opponent-hand">${Array.from({ length: player.handCount }, () => `<span class="card card-back"></span>`).join("")}</div>
