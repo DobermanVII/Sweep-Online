@@ -470,7 +470,7 @@ try {
 }
 
 window.addEventListener("pagehide", () => {
-  if (!session || state?.phase !== "waiting") return;
+  if (!session) return;
   const payload = new Blob([JSON.stringify({ token: session.token })], { type: "application/json" });
   navigator.sendBeacon(`/api/rooms/${session.code}/leave`, payload);
 });

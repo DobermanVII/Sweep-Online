@@ -8,6 +8,7 @@ const ROOT = __dirname;
 const rooms = new Map();
 const MODE_SEATS = { "1v1": 2, "1v1v1": 3, "2v2": 4 };
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".json": "application/json" };
+const WAITING_DISCONNECT_MS = 10000;
 
 function code() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -80,13 +81,37 @@ function teamForBot(room) {
   return counts[0] <= counts[1] ? 0 : 1;
 }
 
-function removeWaitingPlayer(room, seat) {
-  if (room.phase !== "waiting") throw new Error("Cannot leave after the match starts");
-  if (room.players[seat].token === room.hostToken) {
-    rooms.delete(room.code);
+function replacePlayerWithBot(room, seat) {
+  const player = room.players[seat];
+  if (!player || player.bot) return;
+  player.bot = true;
+  player.name = `${player.name} Bot`.slice(0, 16);
+  if (room.phase === "playing" && room.turn === seat) room.nextBotAt = Date.now() + 400;
+}
+
+function leaveRoomPlayer(room, seat) {
+  if (room.phase === "waiting") {
+    if (room.players[seat].token === room.hostToken) {
+      rooms.delete(room.code);
+      return;
+    }
+    room.players.splice(seat, 1);
     return;
   }
-  room.players.splice(seat, 1);
+  replacePlayerWithBot(room, seat);
+}
+
+function handleInactivePlayers(room) {
+  const now = Date.now();
+  if (room.phase === "waiting") {
+    room.players = room.players.filter((player) =>
+      player.bot || player.token === room.hostToken || now - player.connectedAt <= WAITING_DISCONNECT_MS
+    );
+    return;
+  }
+  room.players.forEach((player, seat) => {
+    if (!player.bot && now - player.connectedAt > WAITING_DISCONNECT_MS) replacePlayerWithBot(room, seat);
+  });
 }
 
 function startMatch(room) {
@@ -259,6 +284,7 @@ async function api(req, res, url) {
       const roomCode = url.pathname.split("/")[3].toUpperCase();
       const room = rooms.get(roomCode);
       if (!room) throw new Error("Room not found");
+      handleInactivePlayers(room);
       if (room.phase !== "waiting" || room.players.length >= room.maxPlayers) throw new Error("Room is full or already started");
       const data = await body(req);
       const playerToken = token();
@@ -273,13 +299,15 @@ async function api(req, res, url) {
       if (!room) throw new Error("Room not found");
       const data = req.method === "POST" ? await body(req) : {};
       const playerToken = url.searchParams.get("token") || data.token;
+      const connectedPlayer = room.players.find((player) => player.token === playerToken);
+      if (connectedPlayer) connectedPlayer.connectedAt = Date.now();
+      handleInactivePlayers(room);
       const seat = auth(room, playerToken);
       if (match[2] === "state" && req.method === "GET") {
-        room.players[seat].connectedAt = Date.now();
         return json(res, 200, publicState(room, seat));
       }
       if (match[2] === "leave" && req.method === "POST") {
-        removeWaitingPlayer(room, seat);
+        leaveRoomPlayer(room, seat);
         return json(res, 200, { left: true });
       }
       if (match[2] === "play" && req.method === "POST") {
