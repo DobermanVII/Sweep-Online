@@ -55,10 +55,10 @@ async function createOnlineRoom(name, mode, target, quick = false) {
   }
 }
 
-async function joinOnlineRoom(name, code) {
+async function joinOnlineRoom(name, code, team) {
   const joined = await api(`/api/rooms/${encodeURIComponent(code.toUpperCase())}/join`, {
     method: "POST",
-    body: JSON.stringify({ name })
+    body: JSON.stringify({ name, team })
   });
   enterRoom(joined);
 }
@@ -174,8 +174,10 @@ function render(previousTableCount = lastTableCount) {
   $("deckCount").textContent = state.deckCount;
   $("waitingOverlay").classList.toggle("hidden", state.phase !== "waiting");
   $("addBotButton").classList.toggle("hidden", state.phase !== "waiting" || !state.isHost || state.players.length >= state.maxPlayers);
+  $("startRoomButton").classList.toggle("hidden", state.phase !== "waiting" || !state.isHost);
+  $("startRoomButton").disabled = state.players.length !== state.maxPlayers;
   $("surrenderButton").classList.toggle("hidden", !["opening", "playing"].includes(state.phase));
-  if (state.phase === "waiting") renderWaiting();
+  if (state.phase === "waiting") renderWaitingTeams();
 
   renderOpponents();
   renderScores();
@@ -204,6 +206,26 @@ function renderWaiting() {
   $("waitingSeats").innerHTML = Array.from({ length: state.maxPlayers }, (_, seat) => {
     const player = state.players[seat];
     return `<span class="${player ? `filled ${player.bot ? "bot-seat" : ""}` : ""}">${player ? `${escapeHtml(player.name)}${player.bot ? " · BOT" : ""}` : `Seat ${seat + 1}`}</span>`;
+  }).join("");
+}
+
+function renderWaitingTeams() {
+  $("waitingCode").textContent = state.code;
+  $("waitingStatus").textContent = `${state.players.length} of ${state.maxPlayers} players joined - ${state.isHost ? "Start when ready" : "Waiting for host"}`;
+  if (state.mode === "2v2") {
+    $("waitingSeats").innerHTML = [0, 1].map((team) => {
+      const players = state.players.filter((player) => player.team === team);
+      const seats = Array.from({ length: 2 }, (_, index) => {
+        const player = players[index];
+        return `<span class="${player ? `filled ${player.bot ? "bot-seat" : ""}` : ""}">${player ? `${escapeHtml(player.name)}${player.bot ? " - BOT" : ""}` : "Open seat"}</span>`;
+      }).join("");
+      return `<section class="waiting-team"><b>Team ${team + 1}</b>${seats}</section>`;
+    }).join("");
+    return;
+  }
+  $("waitingSeats").innerHTML = Array.from({ length: state.maxPlayers }, (_, seat) => {
+    const player = state.players[seat];
+    return `<span class="${player ? `filled ${player.bot ? "bot-seat" : ""}` : ""}">${player ? `${escapeHtml(player.name)}${player.bot ? " - BOT" : ""}` : `Seat ${seat + 1}`}</span>`;
   }).join("");
 }
 
@@ -341,6 +363,7 @@ document.querySelectorAll("[data-open-panel]").forEach((button) => button.addEve
   $("panelTitle").textContent = joining ? "Join room" : "Create room";
   $("panelCopy").textContent = joining ? "Enter the code shared by your host." : "Tap a mode to create its waiting room.";
   $("roomCodeField").classList.toggle("hidden", !joining);
+  $("teamField").classList.toggle("hidden", !joining);
   $("scoreField").classList.toggle("hidden", joining);
   $("modeField").classList.toggle("hidden", joining);
   $("roomSubmit").textContent = joining ? "Join table" : "Create table";
@@ -354,7 +377,7 @@ $("roomForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const name = $("playerName").value.trim() || "Player";
   try {
-    if (panelMode === "join") await joinOnlineRoom(name, $("roomCode").value);
+    if (panelMode === "join") await joinOnlineRoom(name, $("roomCode").value, Number($("joinTeam").value));
     else await createOnlineRoom(name, $("selectedMode").value, $("targetScore").value);
   } catch (error) {
     toast(error.message);
@@ -365,6 +388,17 @@ $("addBotButton").addEventListener("click", async () => {
   if (!session || !state?.isHost || state.phase !== "waiting") return;
   try {
     state = await api(`/api/rooms/${session.code}/add-bot`, {
+      method: "POST", body: JSON.stringify({ token: session.token })
+    });
+    render();
+  } catch (error) {
+    toast(error.message);
+  }
+});
+$("startRoomButton").addEventListener("click", async () => {
+  if (!session || !state?.isHost || state.phase !== "waiting") return;
+  try {
+    state = await api(`/api/rooms/${session.code}/start`, {
       method: "POST", body: JSON.stringify({ token: session.token })
     });
     render();

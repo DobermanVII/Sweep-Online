@@ -38,7 +38,7 @@ function shuffle(cards) {
 }
 
 function sideFor(room, seat) {
-  return room.mode === "2v2" ? seat % 2 : seat;
+  return room.mode === "2v2" ? room.players[seat]?.team ?? seat % 2 : seat;
 }
 
 function sideCount(room) {
@@ -51,19 +51,33 @@ function createRoom(name, mode, target = 21, quick = false) {
   const room = {
     code: roomCode, mode, target: Number(target) || 21, maxPlayers: MODE_SEATS[mode],
     hostToken, botCount: 0,
-    players: [{ name: cleanName(name), token: hostToken, connectedAt: Date.now(), bot: false }],
+    players: [{ name: cleanName(name), token: hostToken, connectedAt: Date.now(), bot: false, team: 0 }],
     phase: "waiting", round: 0, scores: [], sweeps: [], captured: [], hands: [], deck: [], table: [],
     openingCards: [], openingStartedAt: 0, turn: 0, lastCaptureSide: null, surrenderedSide: null, eventId: 0, event: null,
     nextBotAt: 0, gameOver: false
   };
-  if (quick) room.players.push({ name: "Dealer", token: token(), connectedAt: Date.now(), bot: true });
+  if (quick) room.players.push({ name: "Dealer", token: token(), connectedAt: Date.now(), bot: true, team: 1 });
   rooms.set(roomCode, room);
-  if (room.players.length === room.maxPlayers) startMatch(room);
+  if (quick) startMatch(room);
   return { room, token: hostToken, seat: 0 };
 }
 
 function cleanName(name) {
   return String(name || "Player").trim().slice(0, 16) || "Player";
+}
+
+function teamForNewPlayer(room, requestedTeam) {
+  if (room.mode !== "2v2") return room.players.length;
+  const team = Number(requestedTeam);
+  if (![0, 1].includes(team)) throw new Error("Choose Team 1 or Team 2");
+  if (room.players.filter((player) => player.team === team).length >= 2) throw new Error(`Team ${team + 1} is full`);
+  return team;
+}
+
+function teamForBot(room) {
+  if (room.mode !== "2v2") return room.players.length;
+  const counts = [0, 1].map((team) => room.players.filter((player) => player.team === team).length);
+  return counts[0] <= counts[1] ? 0 : 1;
 }
 
 function startMatch(room) {
@@ -239,12 +253,12 @@ async function api(req, res, url) {
       if (room.phase !== "waiting" || room.players.length >= room.maxPlayers) throw new Error("Room is full or already started");
       const data = await body(req);
       const playerToken = token();
-      room.players.push({ name: cleanName(data.name), token: playerToken, connectedAt: Date.now(), bot: false });
+      const team = teamForNewPlayer(room, data.team);
+      room.players.push({ name: cleanName(data.name), token: playerToken, connectedAt: Date.now(), bot: false, team });
       const seat = room.players.length - 1;
-      if (room.players.length === room.maxPlayers) startMatch(room);
       return json(res, 200, { code: room.code, token: playerToken, seat });
     }
-    const match = url.pathname.match(/^\/api\/rooms\/([^/]+)\/(state|play|next-round|surrender|add-bot)$/);
+    const match = url.pathname.match(/^\/api\/rooms\/([^/]+)\/(state|play|next-round|surrender|add-bot|start)$/);
     if (match) {
       const room = rooms.get(match[1].toUpperCase());
       if (!room) throw new Error("Room not found");
@@ -278,8 +292,17 @@ async function api(req, res, url) {
         if (room.players[seat].token !== room.hostToken) throw new Error("Only the host can add bots");
         if (room.phase !== "waiting" || room.players.length >= room.maxPlayers) throw new Error("No empty bot seats remain");
         room.botCount++;
-        room.players.push({ name: `Bot ${room.botCount}`, token: token(), connectedAt: Date.now(), bot: true });
-        if (room.players.length === room.maxPlayers) startMatch(room);
+        room.players.push({ name: `Bot ${room.botCount}`, token: token(), connectedAt: Date.now(), bot: true, team: teamForBot(room) });
+        return json(res, 200, publicState(room, seat));
+      }
+      if (match[2] === "start" && req.method === "POST") {
+        if (room.players[seat].token !== room.hostToken) throw new Error("Only the host can start the match");
+        if (room.phase !== "waiting") throw new Error("The match has already started");
+        if (room.players.length !== room.maxPlayers) throw new Error(`Waiting for ${room.maxPlayers - room.players.length} more player(s)`);
+        if (room.mode === "2v2" && [0, 1].some((team) => room.players.filter((player) => player.team === team).length !== 2)) {
+          throw new Error("Each team needs exactly 2 players");
+        }
+        startMatch(room);
         return json(res, 200, publicState(room, seat));
       }
     }

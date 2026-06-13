@@ -183,7 +183,10 @@ input:focus, select:focus { border-color: var(--gold); }
 .waiting-seats span { padding: 10px; color: var(--muted); background: rgba(255,255,255,.035); border: 1px dashed var(--line); border-radius: 8px; font-size: 11px; }
 .waiting-seats span.filled { color: var(--ink); border-style: solid; border-color: rgba(230,184,92,.4); }
 .waiting-seats span.bot-seat { color: #bfe4d1; border-color: rgba(126,225,168,.35); }
-.add-bot-button { width: 100%; min-height: 44px; margin: 0 0 13px; border-radius: 10px; }
+.add-bot-button, .start-room-button { width: 100%; min-height: 44px; margin: 0 0 10px; border-radius: 10px; }
+.start-room-button:disabled { opacity: .42; cursor: not-allowed; filter: grayscale(.45); }
+.waiting-team { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; padding: 9px; background: rgba(255,255,255,.025); border: 1px solid var(--line); border-radius: 10px; }
+.waiting-team > b { grid-column: 1 / -1; color: var(--gold); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
 .leave-waiting-button { width: 100%; min-height: 40px; margin-bottom: 13px; border-radius: 10px; }
 .fx-layer { position: fixed; z-index: 25; inset: 0; overflow: hidden; pointer-events: none; }
 .pixel-fx { position: absolute; left: 50%; top: 50%; image-rendering: pixelated; transform: translate(-50%, -50%); }
