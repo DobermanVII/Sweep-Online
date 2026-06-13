@@ -28,8 +28,14 @@ async function api(path, options = {}) {
     ...options,
     headers: { "Content-Type": "application/json", ...(options.headers || {}) }
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || "Request failed");
+  const text = await response.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error(response.ok ? "Server returned an invalid response" : `Server route unavailable (${response.status})`);
+  }
+  if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
   return data;
 }
 
@@ -66,7 +72,7 @@ function enterRoom(joined) {
   showScreen("game");
   clearInterval(pollTimer);
   pollState();
-  pollTimer = setInterval(pollState, 350);
+  pollTimer = setInterval(pollState, 750);
 }
 
 async function pollState() {
