@@ -172,6 +172,9 @@ function render(previousTableCount = lastTableCount) {
   $("scoreTarget").textContent = state.target;
   $("roundNumber").textContent = state.round || 1;
   $("deckCount").textContent = state.deckCount;
+  $("mobileScoreTarget").textContent = state.target;
+  $("mobileRoundNumber").textContent = state.round || 1;
+  $("mobileDeckCount").textContent = state.deckCount;
   $("waitingOverlay").classList.toggle("hidden", state.phase !== "waiting");
   $("addBotButton").classList.toggle("hidden", state.phase !== "waiting" || !state.isHost || state.players.length >= state.maxPlayers);
   $("startRoomButton").classList.toggle("hidden", state.phase !== "waiting" || !state.isHost);
@@ -194,6 +197,7 @@ function render(previousTableCount = lastTableCount) {
   $("playerLabel").textContent = `${me.name}${state.mode === "2v2" ? ` · Team ${me.team + 1}` : ""}`;
   $("playerStatus").textContent = isMyTurn ? "Your turn" : "Waiting";
   $("playerCapturedCount").textContent = me.capturedCount;
+  $("playerScore").textContent = me.score;
   $("capturedCount").textContent = me.capturedCount;
   $("sweepCount").textContent = me.sweeps;
   $("playerCaptureBadge").dataset.side = me.team;
@@ -239,8 +243,8 @@ function renderOpponents() {
   }
   $("opponentsGrid").innerHTML = opponents.map((player, index) => `
     <article class="opponent-seat opponent-position-${index + 1} ${state.mode === "2v2" && player.team === state.players[state.seat].team ? "teammate-seat" : "rival-seat"} ${state.turn === player.seat && state.phase === "playing" ? "active-seat" : ""}">
-      <div class="player-label"><span class="avatar">${escapeHtml(player.name[0] || "P")}</span><span><strong>${escapeHtml(player.name)}</strong><small>${state.mode === "2v2" ? `Team ${player.team + 1}` : `Score ${player.score}`}</small></span></div>
-      <div class="capture-badge" data-side="${player.team}"><span class="mini-card-stack"></span><b>${player.capturedCount}</b><small>CAPTURED</small></div>
+      <div class="player-label"><span class="avatar">${escapeHtml(player.name[0] || "P")}</span><span><strong>${escapeHtml(player.name)}</strong><small>${state.mode === "2v2" ? `Team ${player.team + 1}` : "Opponent"}</small></span></div>
+      <div class="opponent-stats" data-side="${player.team}"><span><b>${player.score}</b><small>POINTS</small></span><span><b>${player.capturedCount}</b><small>CAPTURED</small></span><span><b>${player.sweeps}</b><small>SWEEPS</small></span></div>
       <div class="hand opponent-hand">${Array.from({ length: player.handCount }, () => `<span class="card card-back"></span>`).join("")}</div>
     </article>`).join("");
 }
@@ -307,7 +311,7 @@ function playCaptureEffect(side, amount, isSweep) {
   fx.className = `pixel-fx ${isSweep ? "sweep-fx" : "capture-fx"}`;
   fx.innerHTML = isSweep ? `<strong>SWEEP!</strong><small>+2 POINTS</small>` : "";
   $("fxLayer").appendChild(fx);
-  const badge = document.querySelector(`.capture-badge[data-side="${side}"]`);
+  const badge = document.querySelector(`.capture-badge[data-side="${side}"], .opponent-stats[data-side="${side}"]`);
   if (badge) {
     badge.classList.remove("count-pop");
     void badge.offsetWidth;

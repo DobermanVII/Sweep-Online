@@ -147,6 +147,12 @@ input:focus, select:focus { border-color: var(--gold); }
 .player-hand .card:hover, .player-hand .card:focus-visible { transform: translateY(-5px) scale(1.025); filter: drop-shadow(0 10px 7px rgba(0,0,0,.4)) brightness(1.06); outline: 0; z-index: 2; }
 .player-hand.disabled .card { pointer-events: none; filter: drop-shadow(0 7px 5px rgba(0,0,0,.3)) brightness(.68); }
 .player-strip { display: flex; align-items: center; justify-content: space-between; padding: 8px 7px 0; border-top: 1px solid var(--line); }
+.player-stat, .opponent-stats span { display: grid; justify-items: center; color: var(--gold); }
+.player-stat b, .opponent-stats b { font-size: 15px; }
+.player-stat small, .opponent-stats small { color: var(--muted); font-size: 5px; letter-spacing: .1em; }
+.match-meta-strip { display: flex; justify-content: center; gap: 18px; padding-top: 6px; color: var(--muted); font-size: 7px; letter-spacing: .08em; text-transform: uppercase; }
+.match-meta-strip b { color: var(--gold); font-size: 9px; }
+.opponent-stats { position: relative; display: flex; gap: 9px; margin: 0 0 5px; padding: 4px 7px; background: rgba(5,34,28,.48); border: 1px solid var(--line); border-radius: 8px; }
 .capture-badge {
   position: relative; display: grid; grid-template-columns: 21px auto; column-gap: 5px; align-items: center; min-width: 58px; padding: 4px 7px;
   color: var(--ink); background: rgba(5,34,28,.62); border: 1px solid var(--line); border-radius: 9px; backdrop-filter: blur(6px);
@@ -207,7 +213,7 @@ input:focus, select:focus { border-color: var(--gold); }
 .flying-card.from-player { bottom: 27%; animation: player-throws-card .44s cubic-bezier(.2,.75,.25,1) forwards; }
 .flying-card.from-opponent { top: 24%; animation: opponent-throws-card .44s cubic-bezier(.2,.75,.25,1) forwards; }
 .landing-impact { position: absolute; left: 50%; top: 50%; width: 96px; height: 96px; transform: translate(-50%, -50%); background: url("effects/capture-impact.png") 0 0 / 672px 96px no-repeat; image-rendering: pixelated; animation: point-sprite .45s steps(7) forwards; }
-.capture-badge.count-pop::after {
+.capture-badge.count-pop::after, .opponent-stats.count-pop::after {
   content: ""; position: absolute; width: 48px; height: 48px; left: 50%; top: 50%; transform: translate(-50%, -50%);
   background: url("effects/counter-sparkle.png") 0 0 / 336px 48px no-repeat; image-rendering: pixelated; animation: sparkle-sprite .65s steps(7) forwards;
 }
@@ -285,6 +291,9 @@ dialog::backdrop { background: rgba(2,18,15,.72); backdrop-filter: blur(5px); }
   .opponent-seat { min-width: 0; flex: 1; padding-inline: 1px; }
   .opponent-seat .player-label { transform: scale(.82); }
   .opponent-seat .capture-badge { transform: scale(.65); }
+  .opponent-stats { gap: 5px; padding: 3px 5px; }
+  .opponent-stats b { font-size: 11px; }
+  .opponent-stats small { font-size: 4px; }
   .opponent-seat .opponent-hand { gap: 1px; }
   .opponent-seat .opponent-hand .card { width: calc(var(--card-w) * .37); height: calc(var(--card-h) * .37); }
 }
